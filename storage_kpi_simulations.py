@@ -15,6 +15,7 @@ def rollavg_bottlneck(a,n):
 # Alaternatively have a number of nodes in the top and bottom to fully mix to
 # to simulate the imperfect diffusers. Then have smaller amount of mnodes to
 # mix in the storage, e.g., simulate real water conduction
+# Another note
 
 # Ended up using rolling mean to simulate mixing
 
