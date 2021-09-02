@@ -19,6 +19,15 @@ import matplotlib.pyplot as plt
 # Heat losses
 
 
+# Mix number is garbage because you need to set arbitrary T_ref, which actually
+# has a big impact. For storages with solar thermal and hp (aka. two cold levels)
+# this cannot work.
+# Second problem with MIX number is that it is affected by the energy content...
+# at high or low energy content, has problems.. does not perform well when close to being full or empty
+# Mix number is instantenous - i.e., does not give info of period
+
+# Hypothesis - as water get's cleaned out - stratification should increase?
+
 #%%
 def density_water(T):
     '''Calculates density (rho) of water in kg/m^3 based on fluid temperature (T) nearest the flow meter in degrees Celsius'''
@@ -46,7 +55,7 @@ no_time_steps = int(simulation_period / time_step) # number of timesteps
 times = np.arange(no_time_steps)*time_step  # array of time steps in hours
 
 # Nodes used for mixing, charge and discharge
-mixing_nodes = 101  # uneven number! - gives the number of nodes that will be mixed (average temperature) at each timestep
+mixing_nodes = 501  # uneven number! - gives the number of nodes that will be mixed (average temperature) at each timestep
 # finds the half of the mixing nodes. These nodes are set to NaN by the rolling window,
 # so is used for replacing the NaNs with actual temperature values
 mixing_half_nodes = int(((mixing_nodes-1)/2))
@@ -66,8 +75,8 @@ temp_mix = temp
 # %%
 # Set the case that will be simulated, e.g. "fully_mixed", "fully_stratified".
 # Otherwise, it simulates storage operation with mixing based on mixing_nodes.
-case = ''
-plot = False
+case = ''#'fully_stratified'
+plot = True
 dfl = []
 
 charging = 1  # Initialize storage as charging
@@ -90,7 +99,6 @@ for ii, t in enumerate(times):
         temp_mix = temp
     else:
         temp_mix = temp.rolling(mixing_nodes, win_type='boxcar', center=True, min_periods=mixing_nodes).mean()
-        #temp_mix[temp_mix.isna()] = temp
         if charging:
             temp_mix[:mixing_half_nodes] = np.mean(temp[:mixing_half_nodes])
             temp_mix[-mixing_half_nodes:] = temp[-mixing_half_nodes:]
@@ -103,12 +111,12 @@ for ii, t in enumerate(times):
 
     # Plot
     if plot:
-        if np.mod(ii, 10) == 0:
+        if np.mod(ii, 25) == 0:
             plt.plot(temp[::-1], np.linspace(0,1,len(temp)))
             plt.xlim(40,100)
             plt.ylim(0,1)
             plt.show()
-    
+
 
 # %% Concat dataframe
 # Create dataframe containing the temperature profiles for each time step.
@@ -127,58 +135,58 @@ df = pd.concat(dfl, axis=1).T
 volume_per_layer = 1/N # Assuming that the storage is a cube 1x1x1 m
 storage_volume = 1
 
-T_ref = 10 # reference temperature for calculating energy
+T_ref = 45 # reference temperature for calculating energy
 
 # Energy content of storage
-Q_storage = (980 * volume_per_layer * df.apply(specific_heat_water) * (df - T_ref)).sum(axis='columns')
+Q_storage = (980 * volume_per_layer * 4200 * (df - T_ref)).sum(axis='columns')
 
 
 #%%
 # Calculation of MIX number for a fully mixed storage
 T_avg = df.mean(axis='columns')
-
 # Calculation of the volume of a mixed storage using the energy content of the actual storage
-V_mix = Q_storage/(density_water(T_avg)*specific_heat_water(T_avg)*(T_avg-T_ref))
-
+V_mix = Q_storage/(980*4200*(T_avg-T_ref))
 # Distance from the bottom of the storage to the middle of the V_mix
 dist_mix = V_mix/2
-
 # MIX number for fully mixed storage
-M_mix = T_avg*density_water(T_avg)*specific_heat_water(T_avg)*dist_mix*V_mix
+M_mix = (T_avg*980*4200*V_mix)*dist_mix
 
 
 #%%
 # Find the volume of water having 90 degC in order to have the same energy content
-V_90 = Q_storage/(density_water(90)*specific_heat_water(90) * (90-T_ref))
-
+# This assumes there is no cold part - i.e., cold part is equal to T_ref
+V_90 = Q_storage/(980*4200 * (T_hot - T_ref))
 # Distance from the bottom of the storage for a storage that has 90 degrees at the top
 dist_90 = 1 - V_90/2
 
 # Calculate MIX number for stratified tank having 90 degC at the top
-M_strat = V_90*90*dist_90*density_water(90)*specific_heat_water(90)
+M_strat = (V_90*T_hot*dist_90)*980*4200
 
 #%%
 # Make a list with the distances of each layer from the bottom of the storage
-d = np.arange(1/N/2, 1, 1/N).tolist()
-
-# Reverse the list to match the order of layers in the dataframe
-dist = list(reversed(d))
-
+dist = np.arange(1/N/2, 1, 1/N)[::-1]
 # Calculate the mix number for the actual storage
-M_exp = df.apply(density_water) * volume_per_layer* dist * df.apply(specific_heat_water) * df
-
-
+M_exp = 980 * volume_per_layer* dist * 4200 * df
 MIX = (M_strat - M_exp.sum(axis=1)) / (M_strat - M_mix)
 
 #%%
-MIX.plot()
+fig, axes = plt.subplots(nrows=2, sharex=True)
+MIX.plot(ax=axes[0], ylim=[0,1.1])
+Q_storage.plot(ax=axes[1])
 
+axes[-1].set_xlim(0,430)
 
+for ax in axes:
+    ax.axvline(205)
+    ax.axvline(405)
 
+# %%
+fig, ax = plt.subplots()
+M_strat.plot(ax=ax, label='Stratified')
+M_exp.sum(axis=1).plot(ax=ax, label='Actual')
+M_mix.plot(ax=ax, label='Mixed')
 
-
-
-
+ax.legend()
 
 
 
