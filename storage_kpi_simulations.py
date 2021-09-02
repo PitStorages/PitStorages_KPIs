@@ -76,7 +76,7 @@ temp_mix = temp
 # Set the case that will be simulated, e.g. "fully_mixed", "fully_stratified".
 # Otherwise, it simulates storage operation with mixing based on mixing_nodes.
 case = ''#'fully_stratified'
-plot = True
+plot = False
 dfl = []
 
 charging = 1  # Initialize storage as charging
@@ -134,6 +134,7 @@ df = pd.concat(dfl, axis=1).T
 # Calculation of storage energy content
 volume_per_layer = 1/N # Assuming that the storage is a cube 1x1x1 m
 storage_volume = 1
+storage_height = 1
 
 T_ref = 45 # reference temperature for calculating energy
 
@@ -147,9 +148,9 @@ T_avg = df.mean(axis='columns')
 # Calculation of the volume of a mixed storage using the energy content of the actual storage
 V_mix = Q_storage/(980*4200*(T_avg-T_ref))
 # Distance from the bottom of the storage to the middle of the V_mix
-dist_mix = V_mix/2
+dist_mix = storage_height/2
 # MIX number for fully mixed storage
-M_mix = (T_avg*980*4200*V_mix)*dist_mix
+M_mix = ((T_avg-T_ref)*980*4200*V_mix)*dist_mix
 
 
 #%%
@@ -157,16 +158,17 @@ M_mix = (T_avg*980*4200*V_mix)*dist_mix
 # This assumes there is no cold part - i.e., cold part is equal to T_ref
 V_90 = Q_storage/(980*4200 * (T_hot - T_ref))
 # Distance from the bottom of the storage for a storage that has 90 degrees at the top
-dist_90 = 1 - V_90/2
+dist_90 = storage_height - V_90/storage_volume/2
+
 
 # Calculate MIX number for stratified tank having 90 degC at the top
-M_strat = (V_90*T_hot*dist_90)*980*4200
+M_strat = (V_90*(T_hot-T_ref)*dist_90)*980*4200
 
 #%%
 # Make a list with the distances of each layer from the bottom of the storage
 dist = np.arange(1/N/2, 1, 1/N)[::-1]
 # Calculate the mix number for the actual storage
-M_exp = 980 * volume_per_layer* dist * 4200 * df
+M_exp = 980 * volume_per_layer* dist * 4200 * (df  - T_ref)
 MIX = (M_strat - M_exp.sum(axis=1)) / (M_strat - M_mix)
 
 #%%
@@ -188,7 +190,9 @@ M_mix.plot(ax=ax, label='Mixed')
 
 ax.legend()
 
-
+#%%
+plt.figure()
+V_90.plot(ylim=[-0.01,1.01])
 
 # %% Garbage
 # Previous charging/discharging numpy style
