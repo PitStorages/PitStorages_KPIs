@@ -10,7 +10,7 @@ The entropy efficiency of the storage is calculated using the method described i
 
 ##### [Exergy_destruction.ipynb](https://github.com/PitStorages/PitStorages_KPIs/blob/main/notebooks/Exergy_destuction.ipynb)
 Exergy destruction is used as an indicator for assessing stratification in a storage. It is calculated through the exergy balance for the storage:
-$$\Delta Ex_{destr} = \Delta Ex_{storage} - \Delta Ex_{inlet} + \Delta Ex_{outlet} + \Delta Ex_{heat loss}$$
+(C:/Users/iosif/Documents/GitHub/Images/Exergy_destruction_equation.png)
 
 ##### [Exergy_efficiency.ipynb](https://github.com/PitStorages/PitStorages_KPIs/blob/main/notebooks/Exergy_efficiency.ipynb)
 The exergy efficiency of the storage is calculated using the method described in the publication by Haller M. Y. et al. (2010) "A method to determine stratification efficiency of thermal energy storage processes independently from storage heat losses".
